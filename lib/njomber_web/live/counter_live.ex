@@ -1,11 +1,34 @@
 defmodule NjomberWeb.CounterLive do
   use NjomberWeb, :live_view
 
+  alias Anoma.Arm
+  alias Anoma.Arm.ComplianceUnit
+  alias Anoma.Arm.ComplianceWitness
+  alias Anoma.Arm.ComplianceInstance
+  alias Anoma.Arm.MerklePath
+  alias Anoma.Arm.NullifierKey
+  alias Anoma.Arm.Transaction
+  alias Anoma.Arm.DeltaWitness
+  alias Anoma.Arm.Action
+  alias Anoma.Arm.Resource
+  alias Anoma.Examples.Counter
+  alias Anoma.Examples.Counter.CounterLogic
+  alias Anoma.Examples.Counter.CounterWitness
+  alias Anoma.Arm.MerkleTree
+  alias Anoma.Util
+
   def mount(_params, _session, socket) do
     # start with the default keypair
+    key = {Anoma.Util.bin2binlist(Base.decode64!(Application.get_env(:njomber, :nullifier_key)))}
+
+    commitment =
+      {Anoma.Util.bin2binlist(
+         Base.decode64!(Application.get_env(:njomber, :nullifier_key_commitment))
+       )}
+
     keypair = %{
-      nullifier_key: Application.get_env(:njomber, :nullifier_key),
-      nullifier_key_commitment: Application.get_env(:njomber, :nullifier_key)
+      nullifier_key: key,
+      nullifier_key_commitment: commitment
     }
 
     socket =
@@ -17,6 +40,7 @@ defmodule NjomberWeb.CounterLive do
         to_form(%{"nullifier_key" => "", "nullifier_key_commitment" => ""}, as: :keypair)
       )
       |> assign(:json_data, %{})
+      |> assign(:selected_tab, nil)
 
     {:ok, socket}
   end
@@ -39,8 +63,8 @@ defmodule NjomberWeb.CounterLive do
     {nullifier_key, nullifier_key_commitment} = Njomber.create_keypair()
 
     keypair = %{
-      nullifier_key: Base.encode64(nullifier_key),
-      nullifier_key_commitment: Base.encode64(nullifier_key_commitment)
+      nullifier_key: nullifier_key,
+      nullifier_key_commitment: nullifier_key_commitment
     }
 
     socket =
@@ -53,9 +77,16 @@ defmodule NjomberWeb.CounterLive do
 
   # use a default keypair from config
   def handle_event("default-keypair", _params, socket) do
+    key = {Anoma.Util.bin2binlist(Base.decode64!(Application.get_env(:njomber, :nullifier_key)))}
+
+    commitment =
+      {Anoma.Util.bin2binlist(
+         Base.decode64!(Application.get_env(:njomber, :nullifier_key_commitment))
+       )}
+
     keypair = %{
-      nullifier_key: Application.get_env(:njomber, :nullifier_key),
-      nullifier_key_commitment: Application.get_env(:njomber, :nullifier_key)
+      nullifier_key: key,
+      nullifier_key_commitment: commitment
     }
 
     socket =
@@ -81,18 +112,63 @@ defmodule NjomberWeb.CounterLive do
     {:noreply, socket}
   end
 
+  def handle_event("select-tab", %{"tab" => tab_name}, socket) do
+    {:noreply, assign(socket, :selected_tab, tab_name)}
+  end
+
   # create a new counter object
   def handle_event("create-counter", _params, socket) do
     nullifier = socket.assigns.current_keypair.nullifier_key
     commitment = socket.assigns.current_keypair.nullifier_key_commitment
 
-    {ephemeral_counter, _} =
-      Njomber.create_ephemeral_counter(Base.decode64!(nullifier), Base.decode64!(commitment))
+    this = self()
 
-    socket =
-      socket
-      |> update(:json_data, &Map.put(&1, "ephemeral_counter", Jason.encode!(ephemeral_counter, pretty: true)))
+    Task.async(fn ->
+      generate_ephemeral_counter(nullifier, commitment, this)
+    end)
 
     {:noreply, socket}
+  end
+
+  def handle_info({ref, _}, socket) when is_reference(ref) do
+    Process.demonitor(ref, [:flush])
+    {:noreply, socket}
+  end
+
+  def handle_info({label, value}, socket) do
+    {:noreply, update(socket, :json_data, &Map.put(&1, "#{label}", inspect(value, pretty: true)))}
+  end
+
+  defp generate_ephemeral_counter(nullifier, commitment, listener) do
+    # create the ephemeral counter
+    {ephemeral_counter, ephemeral_counter_nf} = Njomber.create_ephemeral_counter()
+    send(listener, {:ephemeral_counter, ephemeral_counter})
+    send(listener, {:ephemeral_counter_nf, ephemeral_counter_nf |> elem(0)})
+
+    # create the new couhter
+    created_counter =
+      Njomber.create_new_counter(nullifier, commitment, ephemeral_counter, ephemeral_counter_nf)
+
+    send(listener, {:created_counter, created_counter})
+
+    send(listener, {:compliance_unit, "loading"})
+    # generate the compliance proofs for the transaction
+    {compliance_unit, rcv} =
+      Njomber.generate_compliance_proof(
+        ephemeral_counter,
+        ephemeral_counter_nf,
+        MerklePath.default(),
+        created_counter
+      )
+
+    send(listener, {:compliance_unit, compliance_unit})
+
+    {consumed_proof, created_proof} =  Njomber.generate_logic_proofs(ephemeral_counter, ephemeral_counter_nf, created_counter)
+
+    consumed_proof = Anoma.Arm.convert(consumed_proof)
+    send(listener, {:consumed_proof, consumed_proof})
+
+    created_proof = Anoma.Arm.convert(created_proof)
+    send(listener, {:created_proof, created_proof})
   end
 end
