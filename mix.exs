@@ -60,7 +60,8 @@ defmodule Njomber.MixProject do
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      {:anoma_sdk, path: "/Users/christophe/Documents/Work/anoma-sdk"}
     ]
   end
 
