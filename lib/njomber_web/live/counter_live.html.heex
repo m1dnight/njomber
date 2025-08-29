@@ -1,0 +1,87 @@
+<Layouts.app flash={@flash}>
+
+<!-- Keypair -->
+
+  <div id="keypair-section">
+    <h2 class="text-xl font-semibold flex items-center pb-5">
+      <.icon name="hero-key" class="w-5 h-5 mr-2" /> Keypair
+    </h2>
+
+    <div class="flex flex-col">
+      <div>
+        <.button phx-click="create-keypair">
+          Generate
+        </.button>
+        <.button phx-click="default-keypair">
+          Default
+        </.button>
+      </div>
+    </div>
+  </div>
+
+<!-- Input own keys -->
+  <div>
+    <.form
+      for={@keypair_form}
+      id="keypair-form"
+      phx-change="validate-keypair"
+      phx-submit="update-keypair"
+    >
+      <label>
+        Nullifier Key
+      </label>
+      <.input field={@keypair_form[:nullifier_key]} type="text" />
+
+      <label>
+        Nullifier Key Commitment
+      </label>
+      <.input field={@keypair_form[:nullifier_key_commitment]} type="text" />
+
+      <.button type="submit">
+        Submit
+      </.button>
+    </.form>
+  </div>
+
+<!-- Current keys in use -->
+  <div :if={@current_keypair} id="generate-keypair-output">
+    <label>
+      Nullifier Key
+    </label>
+    <.input name="nullifier_key" type="text" value={@current_keypair.nullifier_key} />
+
+    <label>
+      Nullifier Key Commitment
+    </label>
+    <.input
+      name="nullifier_key_commitment"
+      type="text"
+      value={@current_keypair.nullifier_key_commitment}
+    />
+  </div>
+
+<!-- JSON Data Display -->
+  <div id="json-section" class="mt-8" :if={map_size(@json_data) > 0}>
+    <h2 class="text-xl font-semibold flex items-center pb-5">
+      <.icon name="hero-code-bracket" class="w-5 h-5 mr-2" /> JSON Data
+    </h2>
+    
+    <div class="space-y-4">
+      <div :for={{field_name, json_string} <- @json_data} class="border border-gray-200 rounded-lg">
+        <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
+          <h3 class="text-sm font-semibold text-gray-700"><%= field_name %></h3>
+        </div>
+        <div class="bg-gray-100 p-4 overflow-x-auto">
+          <pre class="text-sm font-mono text-gray-800"><code><%= json_string %></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- Create counter -->
+  <div id="generate-counter" class="flex justify-center">
+    <.button phx-click="create-counter" disabled={nil ==  @current_keypair} >
+      Initialize Counter
+    </.button>
+  </div>
+</Layouts.app>
