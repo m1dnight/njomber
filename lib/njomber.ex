@@ -7,8 +7,15 @@ defmodule Njomber do
   if it comes from the database, an external API or others.
   """
 
+  alias Anoma.Util
+  alias Anoma.Arm.NullifierKey
+
+  @doc """
+  Create a nullifier and commitment for a new user.
+  """
+  @spec create_keypair :: {binary(), binary()}
   def create_keypair do
-    {{nullifier}, {nullifier_commitment}} = Anoma.Arm.NullifierKey.random_pair()
-    {Anoma.Util.binlist2bin(nullifier), Anoma.Util.binlist2bin(nullifier_commitment)}
+    {{nullifier}, {nullifier_commitment}} = NullifierKey.random_pair()
+    {Util.binlist2bin(nullifier), Util.binlist2bin(nullifier_commitment)}
   end
 end
