@@ -44,6 +44,21 @@ defmodule NjomberWeb.CounterLive do
     {:noreply, socket}
   end
 
+  # use a default keypair from config
+  def handle_event("default-keypair", _params, socket) do
+    keypair = %{
+      nullifier_key: Application.get_env(:njomber, :nullifier_key),
+      nullifier_key_commitment: Application.get_env(:njomber, :nullifier_key),
+    }
+
+    socket =
+      socket
+      |> assign(:current_keypair, keypair)
+      |> put_flash(:info, "Using default keypair")
+
+    {:noreply, socket}
+  end
+
   def handle_event("update-keypair", %{"keypair" => keypair_params}, socket) do
     keypair = %{
       nullifier_key: keypair_params["nullifier_key"],
@@ -107,6 +122,9 @@ defmodule NjomberWeb.CounterLive do
             <.button phx-click="create-keypair">
               Generate
             </.button>
+            <.button phx-click="default-keypair">
+              Default
+            </.button>
           </div>
         </div>
       </div>
@@ -150,6 +168,14 @@ defmodule NjomberWeb.CounterLive do
           type="text"
           value={@current_keypair.nullifier_key_commitment}
         />
+      </div>
+
+
+    <!-- Create counter -->
+      <div id="generate-counter" class="content-around">
+          <.button>
+            Initialize Counter
+          </.button>
       </div>
     </Layouts.app>
     """

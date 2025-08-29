@@ -1,5 +1,16 @@
 import Config
 
+config :njomber,
+  nullifier_key: "XBr6grFVkN736uvzZCg5mHWaVXhCPBBk2plBkM69So0=",
+  nullifier_key_commitment: "pQLhLhP91SEYjh1bhrwTeTInqP0D0gnzCuIMT6lGqg4="
+
+# Configure your database
+config :njomber, Njomber.Repo,
+  database: Path.expand("../njomber_dev.db", __DIR__),
+  pool_size: 5,
+  stacktrace: true,
+  show_sensitive_data_on_connection_error: true
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #

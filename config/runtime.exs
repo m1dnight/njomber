@@ -21,6 +21,17 @@ if System.get_env("PHX_SERVER") do
 end
 
 if config_env() == :prod do
+  database_path =
+    System.get_env("DATABASE_PATH") ||
+      raise """
+      environment variable DATABASE_PATH is missing.
+      For example: /etc/njomber/njomber.db
+      """
+
+  config :njomber, Njomber.Repo,
+    database: database_path,
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "5")
+
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
   # want to use a different value for prod and you most likely don't want
@@ -81,4 +92,22 @@ if config_env() == :prod do
   #       force_ssl: [hsts: true]
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
+
+  # ## Configuring the mailer
+  #
+  # In production you need to configure the mailer to use a different adapter.
+  # Here is an example configuration for Mailgun:
+  #
+  #     config :njomber, Njomber.Mailer,
+  #       adapter: Swoosh.Adapters.Mailgun,
+  #       api_key: System.get_env("MAILGUN_API_KEY"),
+  #       domain: System.get_env("MAILGUN_DOMAIN")
+  #
+  # Most non-SMTP adapters require an API client. Swoosh supports Req, Hackney,
+  # and Finch out-of-the-box. This configuration is typically done at
+  # compile-time in your config/prod.exs:
+  #
+  #     config :swoosh, :api_client, Swoosh.ApiClient.Req
+  #
+  # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
 end

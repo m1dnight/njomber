@@ -9,6 +9,7 @@ defmodule Njomber.Application do
   def start(_type, _args) do
     children = [
       NjomberWeb.Telemetry,
+      Njomber.Repo,
       {DNSCluster, query: Application.get_env(:njomber, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Njomber.PubSub},
       # Start a worker by calling: Njomber.Worker.start_link(arg)

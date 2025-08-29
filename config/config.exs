@@ -8,6 +8,7 @@
 import Config
 
 config :njomber,
+  ecto_repos: [Njomber.Repo],
   generators: [timestamp_type: :utc_datetime]
 
 # Configures the endpoint
