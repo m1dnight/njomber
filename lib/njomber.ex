@@ -91,6 +91,32 @@ defmodule Njomber do
     resource
   end
 
+  def increment_counter(old_counter, old_nf_key) do
+    # the counter value is little endian encoded, padded to 32 bytes.
+    counter_value =
+      2
+      |> :binary.encode_unsigned(:little)
+      |> Util.pad_bitstring(32)
+      |> Util.bin2binlist()
+      |> Enum.reverse()
+
+    resource = %{
+      old_counter
+      | is_ephemeral: false,
+        rand_seed: Util.randombinlist(32),
+        nonce: Resource.nullifier(old_counter, old_nf_key),
+        value_ref: counter_value
+    }
+
+    resource
+  end
+
+  def create_increment_tx(old_counter, old_nf_key) do
+    new_counter = increment_counter(old_counter, old_nf_key)
+
+    generate_compliance_proof(old_counter, old_nf_key, MerklePath.default(), new_counter)
+  end
+
   @doc """
   Generate a compliance proof for two resources.
   """

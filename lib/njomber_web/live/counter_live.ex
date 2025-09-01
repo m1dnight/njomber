@@ -34,6 +34,7 @@ defmodule NjomberWeb.CounterLive do
     socket =
       socket
       |> assign(:loading, false)
+      |> assign(:message, nil)
       |> assign(:current_keypair, keypair)
       |> assign(
         :keypair_form,
@@ -130,6 +131,10 @@ defmodule NjomberWeb.CounterLive do
     {:noreply, socket}
   end
 
+  def handle_info({:message, msg}, socket) do
+    {:noreply, assign(socket, :message, msg)}
+  end
+
   def handle_info({ref, _}, socket) when is_reference(ref) do
     Process.demonitor(ref, [:flush])
     {:noreply, socket}
@@ -140,19 +145,29 @@ defmodule NjomberWeb.CounterLive do
   end
 
   defp generate_ephemeral_counter(nullifier, commitment, listener) do
+    # ---------------------------------------------------------------------------
+    # create counter
+
+    send(listener, {:message, "Creating ephemeral counter"})
     # create the ephemeral counter
     {ephemeral_counter, ephemeral_counter_nf} = Njomber.create_ephemeral_counter()
     send(listener, {:ephemeral_counter, ephemeral_counter})
-    send(listener, {:ephemeral_counter_nf, ephemeral_counter_nf |> elem(0)})
 
-    # create the new couhter
+    # ---------------------------------------------------------------------------
+    # create counter
+
+    send(listener, {:message, "Creating new counter"})
+
     created_counter =
       Njomber.create_new_counter(nullifier, commitment, ephemeral_counter, ephemeral_counter_nf)
 
     send(listener, {:created_counter, created_counter})
 
-    send(listener, {:compliance_unit, "loading"})
-    # generate the compliance proofs for the transaction
+    # ---------------------------------------------------------------------------
+    # create compliance proof
+
+    send(listener, {:message, "Creating compliance proofs"})
+
     {compliance_unit, rcv} =
       Njomber.generate_compliance_proof(
         ephemeral_counter,
@@ -163,12 +178,52 @@ defmodule NjomberWeb.CounterLive do
 
     send(listener, {:compliance_unit, compliance_unit})
 
-    {consumed_proof, created_proof} =  Njomber.generate_logic_proofs(ephemeral_counter, ephemeral_counter_nf, created_counter)
+    # ---------------------------------------------------------------------------
+    # create logic proofs
+
+    send(listener, {:message, "Creating logic proofs"})
+
+    {consumed_proof, created_proof} =
+      Njomber.generate_logic_proofs(ephemeral_counter, ephemeral_counter_nf, created_counter)
 
     consumed_proof = Anoma.Arm.convert(consumed_proof)
     send(listener, {:consumed_proof, consumed_proof})
 
     created_proof = Anoma.Arm.convert(created_proof)
     send(listener, {:created_proof, created_proof})
+
+    # ---------------------------------------------------------------------------
+    # create action
+
+    send(listener, {:message, "Creating action"})
+
+    # create an action for this transaction
+    action = %Action{
+      compliance_units: [compliance_unit],
+      logic_verifier_inputs: [consumed_proof, created_proof]
+    }
+
+    send(listener, {:action, action})
+
+    delta_witness = %DeltaWitness{signing_key: Anoma.Util.binlist2bin(rcv)}
+    send(listener, {:delta_witness, delta_witness})
+
+    # ---------------------------------------------------------------------------
+    # create transaction
+
+    send(listener, {:message, "Creating transaction delta proof"})
+
+    transaction = %Transaction{
+      actions: [action],
+      delta_proof: {:witness, delta_witness}
+    }
+
+    send(listener, {:transaction, transaction})
+
+    # generate the delta proof for the transaction
+    transaction = Transaction.generate_delta_proof(transaction)
+    send(listener, {:transaction, transaction})
+
+    send(listener, {:message, "Done"})
   end
 end
