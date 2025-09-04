@@ -65,7 +65,7 @@ defmodule Njomber.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:poison, "~> 6.0"},
-      {:anoma_sdk, path: "/Users/christophe/Documents/Work/anoma-sdk", only: :dev}
+      {:anoma_sdk, git: "git@github.com:anoma/anoma-sdk.git", branch: "main", only: :dev}
     ]
   end
 
