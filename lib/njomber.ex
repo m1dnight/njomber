@@ -25,6 +25,46 @@ defmodule Njomber do
 
   import Anoma.Util
 
+  def test() do
+    a = default_keypair()
+    b = default_keypair()
+
+    # create an ephemeral counter
+    eph_counter = create_ephemeral_counter(a)
+
+    # create a new counter
+    created = create_new_counter(a, eph_counter, b)
+
+    {compliance_unit, rcv} =
+      generate_compliance_proof(
+        eph_counter,
+        b.nullifier_key,
+        MerklePath.default(),
+        created
+      )
+
+    {consumed_proof, created_proof} =
+      Njomber.generate_logic_proofs(eph_counter, b.nullifier_key, created)
+
+    consumed_proof = Arm.convert(consumed_proof)
+    created_proof = Arm.convert(created_proof)
+
+    # create an action for this transaction
+    action = %Action{
+      compliance_units: [compliance_unit],
+      logic_verifier_inputs: [consumed_proof, created_proof]
+    }
+
+    delta_witness = %DeltaWitness{signing_key: Anoma.Util.binlist2bin(rcv)}
+
+    transaction = %Transaction{
+      actions: [action],
+      delta_proof: {:witness, delta_witness}
+    }
+
+    transaction = Transaction.generate_delta_proof(transaction)
+  end
+
   @spec default_keypair :: map()
   def default_keypair do
     key = Application.get_env(:njomber, :nullifier_key)
@@ -49,17 +89,13 @@ defmodule Njomber do
     }
   end
 
-
   @doc """
   Create a new ephemeral counter.
 
   A counter is represented by its owner, and a unique label.
   """
-  @spec create_ephemeral_counter() :: Resource.t()
-  def create_ephemeral_counter() do
-    # an ephemeral counter always uses a random keypair
-    {key, commitment} = NullifierKey.random_pair()
-
+  # @spec create_ephemeral_counter() :: Resource.t()
+  def create_ephemeral_counter(keypair) do
     # the counter value is little endian encoded, padded to 32 bytes.
     counter_value =
       0
@@ -68,17 +104,15 @@ defmodule Njomber do
       |> Util.bin2binlist()
 
     # Create a counter resource
-    resource = %Resource{
+    %Resource{
       logic_ref: Counter.counter_logic_ref(),
       label_ref: randombinlist(32),
       quantity: 1,
       value_ref: counter_value,
       is_ephemeral: true,
       nonce: Util.randombinlist(32),
-      nk_commitment: commitment
+      nk_commitment: keypair.nullifier_key_commitment
     }
-
-    {resource, key}
   end
 
   @doc """
@@ -87,7 +121,7 @@ defmodule Njomber do
   The ephemeral counter serves as the resource we are consuming, in order to
   creeate the new counter.
   """
-  def create_new_counter(nf_key, nf_key_cm, ephemeral_counter, ephemeral_counter_nf_key) do
+  def create_new_counter(keypair_a, ephemeral_counter, keypair_b) do
     # the counter value is little endian encoded, padded to 32 bytes.
     counter_value =
       1
@@ -100,9 +134,9 @@ defmodule Njomber do
       ephemeral_counter
       | is_ephemeral: false,
         rand_seed: Util.randombinlist(32),
-        nonce: Resource.nullifier(ephemeral_counter, ephemeral_counter_nf_key),
+        nonce: Resource.nullifier(ephemeral_counter, keypair_a.nullifier_key),
         value_ref: counter_value,
-        nk_commitment: nf_key_cm
+        nk_commitment: keypair_b.nullifier_key_commitment
     }
 
     resource

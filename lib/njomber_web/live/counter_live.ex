@@ -1,22 +1,6 @@
 defmodule NjomberWeb.CounterLive do
   use NjomberWeb, :live_view
 
-  alias Anoma.Arm
-  alias Anoma.Arm.ComplianceUnit
-  alias Anoma.Arm.ComplianceWitness
-  alias Anoma.Arm.ComplianceInstance
-  alias Anoma.Arm.MerklePath
-  alias Anoma.Arm.NullifierKey
-  alias Anoma.Arm.Transaction
-  alias Anoma.Arm.DeltaWitness
-  alias Anoma.Arm.Action
-  alias Anoma.Arm.Resource
-  alias Anoma.Examples.Counter
-  alias Anoma.Examples.Counter.CounterLogic
-  alias Anoma.Examples.Counter.CounterWitness
-  alias Anoma.Arm.MerkleTree
-  alias Anoma.Util
-
   def mount(_params, _session, socket) do
     socket =
       socket
@@ -49,6 +33,7 @@ defmodule NjomberWeb.CounterLive do
     {:noreply, socket}
   end
 
+  # validate the current input of the keypair
   def handle_event("validate-keypair", %{"keypair" => keypair_params}, socket) do
     with {true, _} <- {valid_input?(keypair_params["nullifier_key"]), :nullifier_key},
          {true, _} <-
@@ -79,23 +64,17 @@ defmodule NjomberWeb.CounterLive do
     {:noreply, socket}
   end
 
-  # def handle_event("select-tab", %{"tab" => tab_name}, socket) do
-  #   {:noreply, assign(socket, :selected_tab, tab_name)}
-  # end
+  # create a new counter object
+  def handle_event("create-counter", _params, socket) do
+    nullifier = socket.assigns.current_keypair.nullifier_key
+    commitment = socket.assigns.current_keypair.nullifier_key_commitment
 
-  # # create a new counter object
-  # def handle_event("create-counter", _params, socket) do
-  #   nullifier = socket.assigns.current_keypair.nullifier_key
-  #   commitment = socket.assigns.current_keypair.nullifier_key_commitment
+    # Task.async(fn ->
+    #   generate_ephemeral_counter(nullifier, commitment, this)
+    # end)
 
-  #   this = self()
-
-  #   Task.async(fn ->
-  #     generate_ephemeral_counter(nullifier, commitment, this)
-  #   end)
-
-  #   {:noreply, socket}
-  # end
+    {:noreply, socket}
+  end
 
   # def handle_info({:message, msg}, socket) do
   #   {:noreply, assign(socket, :message, msg)}
