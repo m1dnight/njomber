@@ -51,7 +51,7 @@
     <.input
       name="nullifier_key"
       type="text"
-      value={Base.encode64(Anoma.Util.binlist2bin(@current_keypair.nullifier_key))}
+      value={encode_key(@current_keypair.nullifier_key)}
     />
 
     <label>
@@ -60,58 +60,8 @@
     <.input
       name="nullifier_key_commitment"
       type="text"
-      value={Base.encode64(Anoma.Util.binlist2bin(@current_keypair.nullifier_key_commitment))}
+      value={encode_key(@current_keypair.nullifier_key_commitment)}
     />
-  </div>
-
-<!-- JSON Data Display -->
-  <div :if={map_size(@json_data) > 0} id="json-section" class="mt-8">
-    <h2 class="text-xl font-semibold flex items-center pb-5">
-      <.icon name="hero-code-bracket" class="w-5 h-5 mr-2" /> JSON Data
-    </h2>
-
-    <div class="border border-gray-200 rounded-lg">
-      <!-- Tab Headers -->
-      <div class="flex flex-wrap border-b border-gray-200 bg-gray-50">
-        <button
-          :for={{field_name, _json_string} <- @json_data}
-          class={[
-            "px-4 py-2 text-sm font-medium border-r border-gray-200 last:border-r-0 focus:outline-none",
-            if(@selected_tab == field_name,
-              do: "bg-white text-blue-600",
-              else: "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-            )
-          ]}
-          phx-click="select-tab"
-          phx-value-tab={field_name}
-        >
-          {field_name}
-        </button>
-      </div>
-
-<!-- Tab Content -->
-      <div
-        :if={@selected_tab && @json_data[@selected_tab]}
-        class="p-4 bg-gray-100 overflow-x-auto"
-      >
-        <pre class="text-sm font-mono text-gray-800"><code><%= @json_data[@selected_tab] %></code></pre>
-      </div>
-    </div>
-  </div>
-
-
-  <div>
-    <p :if={@message}>
-      {@message}
-    </p>
-  </div>
-
-
-<!-- Create counter -->
-  <div id="generate-counter" class="flex justify-center">
-    <.button phx-click="create-counter" disabled={nil == @current_keypair}>
-      Initialize Counter
-    </.button>
   </div>
 
 </Layouts.app>

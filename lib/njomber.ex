@@ -25,13 +25,30 @@ defmodule Njomber do
 
   import Anoma.Util
 
+  @spec default_keypair :: map()
+  def default_keypair do
+    key = Application.get_env(:njomber, :nullifier_key)
+    commitment = Application.get_env(:njomber, :nullifier_key_commitment)
+
+    %{
+      nullifier_key: key,
+      nullifier_key_commitment: commitment
+    }
+  end
+
   @doc """
   Create a nullifier and commitment for a new user.
   """
-  @spec create_keypair :: {{[byte()]}, {[byte()]}}
+  @spec create_keypair :: map()
   def create_keypair do
-    NullifierKey.random_pair()
+    {key, commitment} = NullifierKey.random_pair()
+
+    %{
+      nullifier_key: key,
+      nullifier_key_commitment: commitment
+    }
   end
+
 
   @doc """
   Create a new ephemeral counter.
